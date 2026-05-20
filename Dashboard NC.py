@@ -4,40 +4,77 @@ import plotly.express as px
 import os
 from datetime import datetime
 import io
+import msal
+import requests
 
 # Configuración de la página del dashboard
-st.set_page_config(
-    page_title="Dashboard Notas de Crédito", layout="wide", page_icon="📊"
-)
-st.title("📊 Movimiento de Notas de Crédito")
-st.markdown(
-    "Este panel lee los datos directamente de la ruta local actualizada por Power Query."
-)
+st.set_page_config(page_title="Dashboard Notas de Crédito", layout="wide", page_icon="📊")
+st.title("📊 Movimiento Notas de Crédito")
+st.markdown("Este panel lee los datos directamente de OneDrive Corporativo mediante API Segura.")
 
-# ==============================================================================
-# CONFIGURACIÓN DE LA RUTA LOCAL
-# ==============================================================================
-RUTA_ARCHIVO = RUTA_ARCHIVO = "NOTAS CREDITO ACTUALIZABLE BD SIESA.xlsx"
+# Nombres de tus consultas en Excel
+PESTANA_C1 = "consulta1"
+PESTANA_C2 = "consulta2"
+NOMBRE_EXCEL = "NOTAS CREDITO ACTUALIZABLE BD SIESA.xlsx"
 
-if os.path.exists(RUTA_ARCHIVO):
+# Función para autenticarse en Microsoft Graph y descargar el archivo
+def descargar_excel_onedrive():
     try:
-        # Carga inteligente de pestañas (Acepta mayúsculas y minúsculas)
-        excel_file = pd.ExcelFile(RUTA_ARCHIVO)
+        # Intentar leer las credenciales secretas de Streamlit Cloud
+        tenant_id = st.secrets["microsoft"]["tenant_id"]
+        client_id = st.secrets["microsoft"]["client_id"]
+        client_secret = st.secrets["microsoft"]["client_secret"]
+        user_upn = st.secrets["microsoft"]["user_principal_name"]
+        
+        # Conectarse a Azure AD para pedir un Token de acceso temporal
+        authority = f"https://microsoftonline.com{tenant_id}"
+        app = msal.ConfidentialClientApplication(client_id, authority=authority, client_secret=client_secret)
+        scopes = ["https://microsoft.com"]
+        result = app.acquire_token_for_client(scopes=scopes)
+        
+        if "access_token" in result:
+            token = result["access_token"]
+            headers = {'Authorization': f'Bearer {token}'}
+            # Buscar el archivo en el OneDrive del usuario usando la API de Microsoft Graph
+            url_graph = f"https://microsoft.com{user_upn}/drive/root:/PROYECTOS AUTOMATICOS/Informe Notas Credito/{NOMBRE_EXCEL}:/content"
+            
+            # Nota: Ajusta la ruta de arriba si en tu OneDrive web las carpetas se llaman distinto
+            
+            response = requests.get(url_graph, headers=headers)
+            if response.status_code == 200:
+                return io.BytesIO(response.content)
+            else:
+                st.error(f"Error de Graph API (Status {response.status_code}): No se pudo descargar el archivo.")
+                return None
+        else:
+            st.error("No se pudo obtener el token de acceso de Microsoft. Revisa tus credenciales en Secrets.")
+            return None
+    except Exception as e:
+        # Si falla (porque estamos en PC Local sin st.secrets), retornar la ruta física local
+        ruta_local = r"C:\Users\jsepulveda\OneDrive - Empaques y Servicios Superiores S.A.S\Jsepulveda\Escritorio\PROYECTOS AUTOMATICOS\Informe Notas Credito\NOTAS CREDITO ACTUALIZABLE BD SIESA.xlsx"
+        if os.path.exists(ruta_local):
+            return ruta_local
+        else:
+            st.error("No se encontraron credenciales en la nube ni el archivo en la ruta local.")
+            return None
+
+# EJECUCIÓN DE LA CARGA INTELIGENTE
+origen_datos = descargar_excel_onedrive()
+
+if origen_datos is not None:
+    try:
+        excel_file = pd.ExcelFile(origen_datos)
         todos_los_nombres = excel_file.sheet_names
-
-        pestana_c1 = next(
-            (s for s in todos_los_nombres if s.strip().lower() == "consulta1"), None
-        )
-        pestana_c2 = next(
-            (s for s in todos_los_nombres if s.strip().lower() == "consulta2"), None
-        )
-
+        
+        pestana_c1 = next((s for s in todos_los_nombres if s.strip().lower() == PESTANA_C1), None)
+        pestana_c2 = next((s for s in todos_los_nombres if s.strip().lower() == PESTANA_C2), None)
+        
         if not pestana_c1 or not pestana_c2:
             st.error("❌ Error de lectura: No se encontraron las pestañas requeridas.")
             st.stop()
-
-        df1_raw = pd.read_excel(RUTA_ARCHIVO, sheet_name=pestana_c1)
-        df2_raw = pd.read_excel(RUTA_ARCHIVO, sheet_name=pestana_c2)
+            
+        df1_raw = pd.read_excel(origen_datos, sheet_name=pestana_c1)
+        df2_raw = pd.read_excel(origen_datos, sheet_name=pestana_c2)
 
         # Convertir todos los encabezados a minúsculas para evitar choques de formato
         df1_raw.columns = [str(c).strip().lower() for c in df1_raw.columns]
