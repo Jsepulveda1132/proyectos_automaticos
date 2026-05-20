@@ -7,7 +7,7 @@ import os
 st.set_page_config(
     page_title="Dashboard Notas de Crédito", layout="wide", page_icon="📊"
 )
-st.title("📊 Dashboard Único de Notas de Crédito")
+st.title("📊 Movimiento de Notas de Crédito")
 st.markdown(
     "Este panel lee los datos directamente de la ruta local actualizada por Power Query."
 )
