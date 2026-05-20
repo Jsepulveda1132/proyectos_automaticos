@@ -4,69 +4,56 @@ import plotly.express as px
 import os
 from datetime import datetime
 import io
-import msal
-import requests
+from O365 import Account  # <-- Cambiado a la librería oficial de tu otro proyecto
 
 # Configuración de la página del dashboard
 st.set_page_config(page_title="Dashboard Notas de Crédito", layout="wide", page_icon="📊")
 st.title("📊 Movimiento Notas de Crédito")
-st.markdown("Este panel lee los datos directamente de OneDrive Corporativo mediante API Segura.")
+st.markdown("Este panel lee los datos directamente de OneDrive Corporativo mediante API Segura O365.")
 
 # Nombres de tus consultas en Excel
 PESTANA_C1 = "consulta1"
 PESTANA_C2 = "consulta2"
 NOMBRE_EXCEL = "NOTAS CREDITO ACTUALIZABLE BD SIESA.xlsx"
 
-# Función para autenticarse en Microsoft Graph y descargar el archivo
+# Función para autenticarse en Microsoft usando el protocolo O365 que ya usas
 def descargar_excel_onedrive():
     try:
         # Intentar leer las credenciales secretas de Streamlit Cloud
         tenant_id = st.secrets["microsoft"]["tenant_id"]
         client_id = st.secrets["microsoft"]["client_id"]
         client_secret = st.secrets["microsoft"]["client_secret"]
-        user_upn = st.secrets["microsoft"]["user_principal_name"]
         
-        # Conectarse a Azure AD para pedir un Token de acceso temporal
-        authority = f"https://login.microsoftonline.com/{tenant_id}"
-        # Sintaxis oficial corregida para la librería msal actual
-        app = msal.ConfidentialClientApplication(
-            client_id, 
-            authority=authority, 
-            client_credential=client_secret  # <-- Cambió de client_secret a client_credential
-        )
-
-        scopes = ["https://microsoft.com"]
-        result = app.acquire_token_for_client(scopes=scopes)
+        # Estructura de credenciales oficial de la librería O365
+        credentials = (client_id, client_secret)
+        account = Account(credentials, tenant_id=tenant_id)
         
-        if "access_token" in result:
-            token = result["access_token"]
-            headers = {'Authorization': f'Bearer {token}'}
-            # Buscar el archivo en el OneDrive del usuario usando la API de Microsoft Graph
-            url_graph = f"https://microsoft.com{user_upn}/drive/root:/PROYECTOS AUTOMATICOS/Informe Notas Credito/{NOMBRE_EXCEL}:/content"
+        # Intentar conectar usando el token de acceso existente en la cuenta
+        if account.is_authenticated:
+            storage = account.storage()  # Acceder al OneDrive
+            # Buscar el archivo en la ruta de tus carpetas de OneDrive
+            # Nota: Ajusta la ruta si las carpetas difieren por una tilde
+            folder = storage.get_root_folder().get_folder(by_path='PROYECTOS AUTOMATICOS/Informe Notas Credito')
+            file = folder.get_items(search=NOMBRE_EXCEL, limit=1)[0]
             
-            response = requests.get(url_graph, headers=headers)
-            if response.status_code == 200:
-                return io.BytesIO(response.content)
-            else:
-                # 🚨 Te mostrará si Microsoft rechazó la conexión (Ej: 401 Autorización, 404 No encontrado)
-                st.error(f"⚠️ Error de Graph API (Status {response.status_code}): {response.text}")
-                return None
+            # Descargar el flujo de datos binarios directamente en memoria
+            contenido_binario = file.download()
+            if contenido_binario:
+                return io.BytesIO(contenido_binario)
         else:
-            st.error("❌ No se pudo obtener el token de acceso de Microsoft. Revisa las llaves de Secrets.")
+            st.error("❌ La API de O365 no se encuentra autenticada en la nube. Revisa las llaves de Secrets.")
             return None
             
     except Exception as e:
-        # 🚨 Te mostrará cualquier falla de código o de st.secrets en la pantalla de internet
-        st.warning(f"🔧 Diagnóstico Técnico de la Nube: {e}")
-        
-        # Dejar la ruta local de respaldo intacta abajo por si corres en tu PC
+        # Diagnóstico de respaldo por si ejecutas el script en tu PC Local (Disco C:\)
         ruta_local = r"C:\Users\jsepulveda\OneDrive - Empaques y Servicios Superiores S.A.S\Jsepulveda\Escritorio\PROYECTOS AUTOMATICOS\Informe Notas Credito\NOTAS CREDITO ACTUALIZABLE BD SIESA.xlsx"
         if os.path.exists(ruta_local):
             return ruta_local
         else:
+            st.error(f"🔧 Falla técnica de lectura: {e}")
             return None
 
-# EJECUCIÓN DE LA CARGA INTELIGENTE
+# EJECUCIÓN DE LA CARGA INTELIGENTE CON O365
 origen_datos = descargar_excel_onedrive()
 
 if origen_datos is not None:
@@ -84,13 +71,6 @@ if origen_datos is not None:
         df1_raw = pd.read_excel(origen_datos, sheet_name=pestana_c1)
         df2_raw = pd.read_excel(origen_datos, sheet_name=pestana_c2)
 
-        
-        if not pestana_c1 or not pestana_c2:
-            st.error("❌ Error de lectura: No se encontraron las pestañas requeridas.")
-            st.stop()
-            
-        df1_raw = pd.read_excel(origen_datos, sheet_name=pestana_c1)
-        df2_raw = pd.read_excel(origen_datos, sheet_name=pestana_c2)
 
         # Convertir todos los encabezados a minúsculas para evitar choques de formato
         df1_raw.columns = [str(c).strip().lower() for c in df1_raw.columns]
