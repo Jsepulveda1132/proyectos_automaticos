@@ -28,7 +28,13 @@ def descargar_excel_onedrive():
         
         # Conectarse a Azure AD para pedir un Token de acceso temporal
         authority = f"https://microsoftonline.com{tenant_id}"
-        app = msal.ConfidentialClientApplication(client_id, authority=authority, client_secret=client_secret)
+        # Sintaxis oficial corregida para la librería msal actual
+        app = msal.ConfidentialClientApplication(
+            client_id, 
+            authority=authority, 
+            client_credential=client_secret  # <-- Cambió de client_secret a client_credential
+        )
+
         scopes = ["https://microsoft.com"]
         result = app.acquire_token_for_client(scopes=scopes)
         
