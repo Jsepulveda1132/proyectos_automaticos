@@ -38,24 +38,26 @@ def descargar_excel_onedrive():
             # Buscar el archivo en el OneDrive del usuario usando la API de Microsoft Graph
             url_graph = f"https://microsoft.com{user_upn}/drive/root:/PROYECTOS AUTOMATICOS/Informe Notas Credito/{NOMBRE_EXCEL}:/content"
             
-            # Nota: Ajusta la ruta de arriba si en tu OneDrive web las carpetas se llaman distinto
-            
             response = requests.get(url_graph, headers=headers)
             if response.status_code == 200:
                 return io.BytesIO(response.content)
             else:
-                st.error(f"Error de Graph API (Status {response.status_code}): No se pudo descargar el archivo.")
+                # 🚨 Te mostrará si Microsoft rechazó la conexión (Ej: 401 Autorización, 404 No encontrado)
+                st.error(f"⚠️ Error de Graph API (Status {response.status_code}): {response.text}")
                 return None
         else:
-            st.error("No se pudo obtener el token de acceso de Microsoft. Revisa tus credenciales en Secrets.")
+            st.error("❌ No se pudo obtener el token de acceso de Microsoft. Revisa las llaves de Secrets.")
             return None
+            
     except Exception as e:
-        # Si falla (porque estamos en PC Local sin st.secrets), retornar la ruta física local
+        # 🚨 Te mostrará cualquier falla de código o de st.secrets en la pantalla de internet
+        st.warning(f"🔧 Diagnóstico Técnico de la Nube: {e}")
+        
+        # Dejar la ruta local de respaldo intacta abajo por si corres en tu PC
         ruta_local = r"C:\Users\jsepulveda\OneDrive - Empaques y Servicios Superiores S.A.S\Jsepulveda\Escritorio\PROYECTOS AUTOMATICOS\Informe Notas Credito\NOTAS CREDITO ACTUALIZABLE BD SIESA.xlsx"
         if os.path.exists(ruta_local):
             return ruta_local
         else:
-            st.error("No se encontraron credenciales en la nube ni el archivo en la ruta local.")
             return None
 
 # EJECUCIÓN DE LA CARGA INTELIGENTE
@@ -68,6 +70,14 @@ if origen_datos is not None:
         
         pestana_c1 = next((s for s in todos_los_nombres if s.strip().lower() == PESTANA_C1), None)
         pestana_c2 = next((s for s in todos_los_nombres if s.strip().lower() == PESTANA_C2), None)
+        
+        if not pestana_c1 or not pestana_c2:
+            st.error("❌ Error de lectura: No se encontraron las pestañas requeridas.")
+            st.stop()
+            
+        df1_raw = pd.read_excel(origen_datos, sheet_name=pestana_c1)
+        df2_raw = pd.read_excel(origen_datos, sheet_name=pestana_c2)
+
         
         if not pestana_c1 or not pestana_c2:
             st.error("❌ Error de lectura: No se encontraron las pestañas requeridas.")
