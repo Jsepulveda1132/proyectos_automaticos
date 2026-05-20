@@ -350,14 +350,50 @@ if os.path.exists(RUTA_ARCHIVO):
             fig_barra_cant.update_layout(xaxis_tickformat=",.0f", separators=",.")
             st.plotly_chart(fig_barra_cant, use_container_width=True)
 
+            st.markdown("---")
+            st.markdown("### 🎯 Análisis de Clientes Críticos (Enfoque Financiero 80/20)")
+
+        # 1. Calcular la concentración del dinero por cliente
+        df_pareto = df_filtrado.groupby('Cliente')['Valor_Neto'].sum().reset_index()
+        df_pareto = df_pareto.sort_values(by='Valor_Neto', ascending=False)
+
+        monto_total_global = df_pareto['Valor_Neto'].sum()
+
+        if monto_total_global > 0:
+            # Calcular porcentajes individuales y acumulados
+            df_pareto['Porcentaje'] = (df_pareto['Valor_Neto'] / monto_total_global) * 100
+            df_pareto['Acumulado'] = df_pareto['Porcentaje'].cumsum()
+
+            # Identificar quiénes representan el primer 80% del problema financiero
+            clientes_criticos = df_pareto[df_pareto['Acumulado'] <= 85] # Margen seguro del 80-85%
+            num_criticos = len(clientes_criticos) if len(clientes_criticos) > 0 else 1
+
+            # Mostrar insights ejecutivos en tarjetas de diseño
+            p_col1, p_col2 = st.columns(2)
+            with p_col1:
+                st.info(f"💡 **Insight Financiero:** Solo **{num_criticos} cliente(s)** concentran la gran mayoría del dinero devuelto por Notas de Crédito en este periodo filtrado.")
+
+            # 2. Dibujar la gráfica de barras combinada de Pareto
+            fig_pareto = px.bar(
+                df_pareto.head(10), x='Cliente', y='Valor_Neto',
+                text=df_pareto.head(10)['Porcentaje'].apply(lambda x: f"{x:.1f}%"),
+                title="Top 10 Clientes con Mayor Impacto en Cartera",
+                template="plotly_white", color_discrete_sequence=['#B71C1C'] # Color rojo corporativo de alerta
+            )
+            fig_pareto.update_layout(yaxis_tickformat="$ ,.0f", separators=",.")
+            fig_pareto.update_traces(textposition='outside', hovertemplate="<b>Cliente:</b> %{x}<br><b>Monto:</b> $ %{y:,.0f}<extra></extra>")
+            st.plotly_chart(fig_pareto, use_container_width=True)
+
+            st.markdown("---")
+
         # Tabla Formateada con Puntos en Miles y Comas en Decimales (Sin Origen_Data)
         st.subheader("🔍 Explorador de Datos Integrado")
-        
+
         # Removimos 'Origen_Data' de esta lista para ocultarla del usuario
         columnas_tabla = ['Numero_NC', 'Fecha', 'NIT_Cliente', 'Cliente', 'Motivo_Anulacion', 'Valor_Neto']
-        
+
         df_vista = df_filtrado[columnas_tabla].sort_values(by='Fecha', ascending=False)
-        
+
         st.dataframe(
             df_vista.style.format({
                 'Valor_Neto': lambda x: f"$ {x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
