@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+from datetime import datetime
+import io
 
 # Configuración de la página del dashboard
 st.set_page_config(
@@ -37,16 +39,11 @@ if os.path.exists(RUTA_ARCHIVO):
         df1_raw = pd.read_excel(RUTA_ARCHIVO, sheet_name=pestana_c1)
         df2_raw = pd.read_excel(RUTA_ARCHIVO, sheet_name=pestana_c2)
 
-        # 📊 AUDITORÍA EN VIVO EN LA BARRA LATERAL (Para control de TI)
-        st.sidebar.markdown("### 🔍 Auditoría de Carga (Bruta)")
-        st.sidebar.write(f"Filas originales C1: **{df1_raw.shape[0]}**")
-        st.sidebar.write(f"Filas originales C2: **{df2_raw.shape[0]}**")
-
-        # Convertir todos los encabezados de las columnas a minúsculas para evitar errores de mayúsculas/minúsculas
+        # Convertir todos los encabezados a minúsculas para evitar choques de formato
         df1_raw.columns = [str(c).strip().lower() for c in df1_raw.columns]
         df2_raw.columns = [str(c).strip().lower() for c in df2_raw.columns]
 
-        # Detección automática inteligente de la columna de motivos
+        # Detección automática inteligente de columnas
         col_motivo_c1 = next(
             (c for c in df1_raw.columns if "motivo" in c or "20_0000186" in c),
             df1_raw.columns[-1],
@@ -56,7 +53,6 @@ if os.path.exists(RUTA_ARCHIVO):
             df2_raw.columns[-1],
         )
 
-        # Detección automática de la columna de valor neto (por si cambia de F a f)
         col_valor_c1 = next(
             (c for c in df1_raw.columns if "valor_neto" in c or "neto" in c),
             "f_valor_neto_docto",
@@ -66,7 +62,7 @@ if os.path.exists(RUTA_ARCHIVO):
             "f_valor_neto_alt",
         )
 
-        # Mapeos específicos basados estrictamente en minúsculas
+        # Mapeos específicos basados en minúsculas
         columnas_c1 = {
             "f_nrodocto": "Numero_NC",
             "f_fecha": "Fecha",
@@ -109,7 +105,7 @@ if os.path.exists(RUTA_ARCHIVO):
         df1 = df1[[c for c in columnas_finales if c in df1.columns]]
         df2 = df2[[c for c in columnas_finales if c in df2.columns]]
 
-        # Unificar las dos bases de datos limpias
+        # Unificar bases de datos
         df_total = pd.concat([df1, df2], ignore_index=True)
 
         # Limpieza de datos básica
@@ -120,7 +116,7 @@ if os.path.exists(RUTA_ARCHIVO):
         df_total = df_total.dropna(subset=["Fecha"])
         df_total["Año_Mes"] = df_total["Fecha"].dt.to_period("M").astype(str)
 
-        # Corrección de formato de dinero
+        # Corrección de formato de dinero regional
         def limpiar_monto(val):
             if pd.isna(val):
                 return 0.0
@@ -164,7 +160,7 @@ if os.path.exists(RUTA_ARCHIVO):
                 & (df_fechas["Fecha"].dt.date <= f_fin)
             ]
 
-        # Filtro de clientes con métricas
+        # Filtro de clientes con métricas integradas
         resumen_clientes = (
             df_fechas.groupby("Cliente")
             .agg(Total=("Valor_Neto", "sum"), Cantidad=("Numero_NC", "count"))
@@ -191,7 +187,7 @@ if os.path.exists(RUTA_ARCHIVO):
                 df_motivos_prev["Cliente"].isin(clientes_seleccionados)
             ]
 
-        # Filtro de motivos dinámicos
+        # Filtro de motivos dinámicos por cliente
         resumen_motivos = (
             df_motivos_prev.groupby("Motivo_Anulacion")
             .agg(Total=("Valor_Neto", "sum"), Cantidad=("Numero_NC", "count"))
@@ -224,16 +220,32 @@ if os.path.exists(RUTA_ARCHIVO):
             ]
 
         # ==============================================================================
-        # DESPLIEGUE DEL DASHBOARD (KPIs, Gráficos, Pareto y Tabla)
+        # INSIGHTS EJECUTIVOS AUTOMÁTICOS
+        # ==============================================================================
+        if df_filtrado.shape[0] > 0:
+            motivo_top = (
+                df_filtrado.groupby("Motivo_Anulacion")["Valor_Neto"].sum().idxmax()
+            )
+            mes_top = df_filtrado.groupby("Año_Mes")["Valor_Neto"].sum().idxmax()
+
+            st.info(
+                f"💡 **Resumen Gerencial:** El motivo principal de afectación es **'{motivo_top}'**, y el periodo de mayor impacto financiero corresponde a **{mes_top}**."
+            )
+            st.markdown("---")
+
+        # ==============================================================================
+        # TARJETAS DE KPIs (MÉTRICAS EN 4 COLUMNAS)
         # ==============================================================================
         monto_total = df_filtrado["Valor_Neto"].sum()
         conteo_notas = df_filtrado.shape[0]
         promedio_nota = monto_total / conteo_notas if conteo_notas > 0 else 0
+        nota_maxima = df_filtrado["Valor_Neto"].max() if conteo_notas > 0 else 0
 
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         col1.metric("💰 Total Crédito Consolidado", f"$ {monto_total:,.2f}")
         col2.metric("📄 Volumen Total de Notas", f"{conteo_notas:,}")
         col3.metric("🧮 Valor Promedio por NC", f"$ {promedio_nota:,.2f}")
+        col4.metric("🚨 Nota de Crédito Máxima", f"$ {nota_maxima:,.2f}")
 
         st.markdown("---")
 
@@ -344,7 +356,7 @@ if os.path.exists(RUTA_ARCHIVO):
             fig_barra_cant.update_layout(xaxis_tickformat=",.0f", separators=",.")
             st.plotly_chart(fig_barra_cant, use_container_width=True)
 
-        # SECCIÓN PARETO
+        # SECCIÓN PARETO 80/20
         st.markdown("---")
         st.markdown("### 🎯 Análisis de Clientes Críticos (Enfoque Financiero 80/20)")
         df_pareto = (
@@ -381,9 +393,12 @@ if os.path.exists(RUTA_ARCHIVO):
             )
             st.plotly_chart(fig_pareto, use_container_width=True)
 
-        # TABLA FINAL DETALLADA
+        # TABLA FINAL DETALLADA Y BOTÓN DE DESCARGA EXCEL
         st.markdown("---")
-        st.subheader("🔍 Explorador de Datos Integrado")
+        t_col1, t_col2 = st.columns(2)
+        with t_col1:
+            st.subheader("🔍 Explorador de Datos Integrado")
+
         columnas_tabla = [
             "Numero_NC",
             "Fecha",
@@ -393,6 +408,19 @@ if os.path.exists(RUTA_ARCHIVO):
             "Valor_Neto",
         ]
         df_vista = df_filtrado[columnas_tabla].sort_values(by="Fecha", ascending=False)
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df_vista.to_excel(writer, index=False, sheet_name="Datos_Filtrados")
+        processed_data = output.getvalue()
+
+        with t_col2:
+            st.download_button(
+                label="📥 Descargar Reporte en Excel",
+                data=processed_data,
+                file_name=f"Reporte_Notas_Credito_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
 
         st.dataframe(
             df_vista.style.format(
