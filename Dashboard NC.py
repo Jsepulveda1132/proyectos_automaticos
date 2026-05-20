@@ -37,29 +37,43 @@ if os.path.exists(RUTA_ARCHIVO):
         df1_raw = pd.read_excel(RUTA_ARCHIVO, sheet_name=pestana_c1)
         df2_raw = pd.read_excel(RUTA_ARCHIVO, sheet_name=pestana_c2)
 
-        # Detección automática de la columna de motivos
+        # 📊 AUDITORÍA EN VIVO EN LA BARRA LATERAL (Para control de TI)
+        st.sidebar.markdown("### 🔍 Auditoría de Carga (Bruta)")
+        st.sidebar.write(f"Filas originales C1: **{df1_raw.shape[0]}**")
+        st.sidebar.write(f"Filas originales C2: **{df2_raw.shape[0]}**")
+
+        # Convertir todos los encabezados de las columnas a minúsculas para evitar errores de mayúsculas/minúsculas
+        df1_raw.columns = [str(c).strip().lower() for c in df1_raw.columns]
+        df2_raw.columns = [str(c).strip().lower() for c in df2_raw.columns]
+
+        # Detección automática inteligente de la columna de motivos
         col_motivo_c1 = next(
-            (c for c in df1_raw.columns if "motivo" in c.lower() or "20_0000186" in c),
-            None,
+            (c for c in df1_raw.columns if "motivo" in c or "20_0000186" in c),
+            df1_raw.columns[-1],
         )
         col_motivo_c2 = next(
-            (c for c in df2_raw.columns if "motivo" in c.lower() or "20_0000186" in c),
-            None,
+            (c for c in df2_raw.columns if "motivo" in c or "20_0000186" in c),
+            df2_raw.columns[-1],
         )
 
-        if not col_motivo_c1:
-            col_motivo_c1 = df1_raw.columns[-1]
-        if not col_motivo_c2:
-            col_motivo_c2 = df2_raw.columns[-1]
+        # Detección automática de la columna de valor neto (por si cambia de F a f)
+        col_valor_c1 = next(
+            (c for c in df1_raw.columns if "valor_neto" in c or "neto" in c),
+            "f_valor_neto_docto",
+        )
+        col_valor_c2 = next(
+            (c for c in df2_raw.columns if "valor_neto" in c or "neto" in c),
+            "f_valor_neto_alt",
+        )
 
-        # Mapeos específicos de columnas
+        # Mapeos específicos basados estrictamente en minúsculas
         columnas_c1 = {
             "f_nrodocto": "Numero_NC",
             "f_fecha": "Fecha",
             "f_cliente": "NIT_Cliente",
             "f_cliente_razon_soc": "Cliente",
             "f_notas": "Observaciones",
-            "f_valor_neto_docto": "Valor_Neto",
+            col_valor_c1: "Valor_Neto",
             "f_estado": "Estado",
             col_motivo_c1: "Motivo_Anulacion",
         }
@@ -70,7 +84,7 @@ if os.path.exists(RUTA_ARCHIVO):
             "f_cliente_fact": "NIT_Cliente",
             "f_cliente_fact_razon_soc": "Cliente",
             "f_notes": "Observaciones",
-            "F_valor_neto_alt": "Valor_Neto",
+            col_valor_c2: "Valor_Neto",
             "f_estado": "Estado",
             col_motivo_c2: "Motivo_Anulacion",
         }
@@ -95,6 +109,7 @@ if os.path.exists(RUTA_ARCHIVO):
         df1 = df1[[c for c in columnas_finales if c in df1.columns]]
         df2 = df2[[c for c in columnas_finales if c in df2.columns]]
 
+        # Unificar las dos bases de datos limpias
         df_total = pd.concat([df1, df2], ignore_index=True)
 
         # Limpieza de datos básica
@@ -105,7 +120,7 @@ if os.path.exists(RUTA_ARCHIVO):
         df_total = df_total.dropna(subset=["Fecha"])
         df_total["Año_Mes"] = df_total["Fecha"].dt.to_period("M").astype(str)
 
-        # Corrección definitiva de formato de dinero
+        # Corrección de formato de dinero
         def limpiar_monto(val):
             if pd.isna(val):
                 return 0.0
@@ -131,7 +146,6 @@ if os.path.exists(RUTA_ARCHIVO):
         # ==============================================================================
         st.sidebar.header("🎯 Filtros Globales")
 
-        # 1. FILTRO DE FECHAS (Calendario)
         min_fecha = df_total["Fecha"].min().date()
         max_fecha = df_total["Fecha"].max().date()
 
@@ -142,7 +156,6 @@ if os.path.exists(RUTA_ARCHIVO):
             max_value=max_fecha,
         )
 
-        # Filtrado temporal inicial por fechas para actualizar las métricas de los siguientes filtros
         df_fechas = df_total.copy()
         if isinstance(rango_fechas, tuple) and len(rango_fechas) == 2:
             f_inicio, f_fin = rango_fechas
@@ -151,7 +164,7 @@ if os.path.exists(RUTA_ARCHIVO):
                 & (df_fechas["Fecha"].dt.date <= f_fin)
             ]
 
-        # 2. FILTRO DE CLIENTES CON MÉTRICAS (Monto y Cantidad de NC)
+        # Filtro de clientes con métricas
         resumen_clientes = (
             df_fechas.groupby("Cliente")
             .agg(Total=("Valor_Neto", "sum"), Cantidad=("Numero_NC", "count"))
@@ -172,14 +185,13 @@ if os.path.exists(RUTA_ARCHIVO):
         )
         clientes_seleccionados = [mapeo_clientes[l] for l in filtro_clientes_labels]
 
-        # Aplicar filtro de cliente para delimitar los motivos disponibles
         df_motivos_prev = df_fechas.copy()
         if clientes_seleccionados:
             df_motivos_prev = df_motivos_prev[
                 df_motivos_prev["Cliente"].isin(clientes_seleccionados)
             ]
 
-        # 3. FILTRO DE MOTIVOS DINÁMICOS POR CLIENTE (Con métricas integradas)
+        # Filtro de motivos dinámicos
         resumen_motivos = (
             df_motivos_prev.groupby("Motivo_Anulacion")
             .agg(Total=("Valor_Neto", "sum"), Cantidad=("Numero_NC", "count"))
@@ -200,7 +212,7 @@ if os.path.exists(RUTA_ARCHIVO):
         )
         motivos_seleccionados = [mapeo_motivos[l] for l in filtro_motivos_labels]
 
-        # APLICACIÓN DE TODOS LOS FILTROS COMBINADOS AL DATAFRAME FINAL
+        # Aplicación de filtros finales
         df_filtrado = df_fechas.copy()
         if clientes_seleccionados:
             df_filtrado = df_filtrado[
@@ -212,7 +224,7 @@ if os.path.exists(RUTA_ARCHIVO):
             ]
 
         # ==============================================================================
-        # DESPLIEGUE DEL DASHBOARD (KPIs, Gráficos y Tabla)
+        # DESPLIEGUE DEL DASHBOARD (KPIs, Gráficos, Pareto y Tabla)
         # ==============================================================================
         monto_total = df_filtrado["Valor_Neto"].sum()
         conteo_notas = df_filtrado.shape[0]
@@ -225,23 +237,18 @@ if os.path.exists(RUTA_ARCHIVO):
 
         st.markdown("---")
 
-    
-        # ==============================================================================
-        # GRÁFICOS INTERACTIVOS (CUADRÍCULA DE 2X2)
-        # ==============================================================================
-        # FILA 1: TENDENCIAS TEMPORALES (CRONOLÓGICAS)
+        # FILA 1: TENDENCIAS TEMPORALES
         st.markdown("### 📈 Análisis de Tendencia Temporal")
         fila1_col1, fila1_col2 = st.columns(2)
 
-        # Agrupar datos cronológicos base
         df_tiempo = (
             df_filtrado.groupby(df_filtrado["Fecha"].dt.date)
             .agg(
                 Monto_Total=("Valor_Neto", "sum"), Cantidad_Total=("Numero_NC", "count")
             )
             .reset_index()
+            .sort_values(by="Fecha")
         )
-        df_tiempo = df_tiempo.sort_values(by="Fecha")
 
         with fila1_col1:
             st.subheader("Tendencia Temporal por Valor")
@@ -250,7 +257,6 @@ if os.path.exists(RUTA_ARCHIVO):
                 x="Fecha",
                 y="Monto_Total",
                 markers=True,
-                labels={"Fecha": "Fecha de Emisión", "Monto_Total": "Monto ($)"},
                 template="plotly_white",
                 color_discrete_sequence=["#2E7D32"],
             )
@@ -261,7 +267,7 @@ if os.path.exists(RUTA_ARCHIVO):
                 xaxis_tickformat="%d/%m/%Y",
                 yaxis_tickformat="$ ,.0f",
                 separators=",.",
-                xaxis_title="Línea de Tiempo (Día a Día)",
+                xaxis_title="Línea de Tiempo",
             )
             st.plotly_chart(fig_linea_valor, use_container_width=True)
 
@@ -272,12 +278,8 @@ if os.path.exists(RUTA_ARCHIVO):
                 x="Fecha",
                 y="Cantidad_Total",
                 markers=True,
-                labels={
-                    "Fecha": "Fecha de Emisión",
-                    "Cantidad_Total": "Cantidad de NC",
-                },
                 template="plotly_white",
-                color_discrete_sequence=["#1565C0"],  # Color azul para diferenciar
+                color_discrete_sequence=["#1565C0"],
             )
             fig_linea_cant.update_traces(
                 hovertemplate="<b>Fecha:</b> %{x|%d/%m/%Y}<br><b>Notas:</b> %{y:,.0f} NC<extra></extra>"
@@ -286,17 +288,16 @@ if os.path.exists(RUTA_ARCHIVO):
                 xaxis_tickformat="%d/%m/%Y",
                 yaxis_tickformat=",.0f",
                 separators=",.",
-                xaxis_title="Línea de Tiempo (Día a Día)",
+                xaxis_title="Línea de Tiempo",
             )
             st.plotly_chart(fig_linea_cant, use_container_width=True)
 
         st.markdown("---")
 
-        # FILA 2: DISTRIBUCIÓN POR MOTIVOS DE ANULACIÓN
+        # FILA 2: DISTRIBUCIÓN POR MOTIVOS
         st.markdown("### 📋 Análisis por Motivos de Anulación")
         fila2_col1, fila2_col2 = st.columns(2)
 
-        # Agrupar datos de motivos base
         df_motivos_graf = (
             df_filtrado.groupby("Motivo_Anulacion")
             .agg(
@@ -315,11 +316,9 @@ if os.path.exists(RUTA_ARCHIVO):
                 x="Monto_Total",
                 y="Motivo_Anulacion",
                 orientation="h",
-                labels={"Monto_Total": "Total ($)", "Motivo_Anulacion": "Motivo"},
                 template="plotly_white",
                 color_discrete_sequence=["#4CAF50"],
             )
-            # Forzar formato regional colombiano en el cuadro flotante (Hover)
             fig_barra_valor.update_traces(
                 hovertemplate="<b>Motivo:</b> %{y}<br><b>Monto:</b> $ %{x:,.0f}<extra></extra>"
             )
@@ -336,70 +335,77 @@ if os.path.exists(RUTA_ARCHIVO):
                 x="Cantidad_Total",
                 y="Motivo_Anulacion",
                 orientation="h",
-                labels={
-                    "Cantidad_Total": "Cantidad de NC",
-                    "Motivo_Anulacion": "Motivo",
-                },
                 template="plotly_white",
                 color_discrete_sequence=["#1E88E5"],
             )
-            # Forzar formato regional de cantidad pura en el cuadro flotante (Hover)
             fig_barra_cant.update_traces(
                 hovertemplate="<b>Motivo:</b> %{y}<br><b>Notas:</b> %{x:,.0f} NC<extra></extra>"
             )
             fig_barra_cant.update_layout(xaxis_tickformat=",.0f", separators=",.")
             st.plotly_chart(fig_barra_cant, use_container_width=True)
 
-            st.markdown("---")
-            st.markdown("### 🎯 Análisis de Clientes Críticos)")
-
-        # 1. Calcular la concentración del dinero por cliente
-        df_pareto = df_filtrado.groupby('Cliente')['Valor_Neto'].sum().reset_index()
-        df_pareto = df_pareto.sort_values(by='Valor_Neto', ascending=False)
-
-        monto_total_global = df_pareto['Valor_Neto'].sum()
+        # SECCIÓN PARETO
+        st.markdown("---")
+        st.markdown("### 🎯 Análisis de Clientes Críticos (Enfoque Financiero 80/20)")
+        df_pareto = (
+            df_filtrado.groupby("Cliente")["Valor_Neto"]
+            .sum()
+            .reset_index()
+            .sort_values(by="Valor_Neto", ascending=False)
+        )
+        monto_total_global = df_pareto["Valor_Neto"].sum()
 
         if monto_total_global > 0:
-            # Calcular porcentajes individuales y acumulados
-            df_pareto['Porcentaje'] = (df_pareto['Valor_Neto'] / monto_total_global) * 100
-            df_pareto['Acumulado'] = df_pareto['Porcentaje'].cumsum()
-
-            # Identificar quiénes representan el primer 80% del problema financiero
-            clientes_criticos = df_pareto[df_pareto['Acumulado'] <= 85] # Margen seguro del 80-85%
+            df_pareto["Porcentaje"] = (
+                df_pareto["Valor_Neto"] / monto_total_global
+            ) * 100
+            df_pareto["Acumulado"] = df_pareto["Porcentaje"].cumsum()
+            clientes_criticos = df_pareto[df_pareto["Acumulado"] <= 85]
             num_criticos = len(clientes_criticos) if len(clientes_criticos) > 0 else 1
 
-            # Mostrar insights ejecutivos en tarjetas de diseño
-            p_col1, p_col2 = st.columns(2)
-            with p_col1:
-                st.info(f"💡 **Insight Financiero:** Solo **{num_criticos} cliente(s)** concentran la gran mayoría del dinero devuelto por Notas de Crédito en este periodo filtrado.")
-
-            # 2. Dibujar la gráfica de barras combinada de Pareto
+            st.info(
+                f"💡 **Insight Financiero:** Solo **{num_criticos} cliente(s)** concentran la gran mayoría del dinero devuelto por Notas de Crédito."
+            )
             fig_pareto = px.bar(
-                df_pareto.head(10), x='Cliente', y='Valor_Neto',
-                text=df_pareto.head(10)['Porcentaje'].apply(lambda x: f"{x:.1f}%"),
-                title="Top 10 Clientes con Mayor Impacto en Cartera",
-                template="plotly_white", color_discrete_sequence=['#B71C1C'] # Color rojo corporativo de alerta
+                df_pareto.head(10),
+                x="Cliente",
+                y="Valor_Neto",
+                text=df_pareto.head(10)["Porcentaje"].apply(lambda x: f"{x:.1f}%"),
+                template="plotly_white",
+                color_discrete_sequence=["#B71C1C"],
             )
             fig_pareto.update_layout(yaxis_tickformat="$ ,.0f", separators=",.")
-            fig_pareto.update_traces(textposition='outside', hovertemplate="<b>Cliente:</b> %{x}<br><b>Monto:</b> $ %{y:,.0f}<extra></extra>")
+            fig_pareto.update_traces(
+                textposition="outside",
+                hovertemplate="<b>Cliente:</b> %{x}<br><b>Monto:</b> $ %{y:,.0f}<extra></extra>",
+            )
             st.plotly_chart(fig_pareto, use_container_width=True)
 
-            st.markdown("---")
-
-        # Tabla Formateada con Puntos en Miles y Comas en Decimales (Sin Origen_Data)
+        # TABLA FINAL DETALLADA
+        st.markdown("---")
         st.subheader("🔍 Explorador de Datos Integrado")
-
-        # Removimos 'Origen_Data' de esta lista para ocultarla del usuario
-        columnas_tabla = ['Numero_NC', 'Fecha', 'NIT_Cliente', 'Cliente', 'Motivo_Anulacion', 'Valor_Neto']
-
-        df_vista = df_filtrado[columnas_tabla].sort_values(by='Fecha', ascending=False)
+        columnas_tabla = [
+            "Numero_NC",
+            "Fecha",
+            "NIT_Cliente",
+            "Cliente",
+            "Motivo_Anulacion",
+            "Valor_Neto",
+        ]
+        df_vista = df_filtrado[columnas_tabla].sort_values(by="Fecha", ascending=False)
 
         st.dataframe(
-            df_vista.style.format({
-                'Valor_Neto': lambda x: f"$ {x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
-                'Fecha': lambda t: t.strftime('%d/%m/%Y %H:%M') if pd.notnull(t) else ""
-            }), 
-            use_container_width=True
+            df_vista.style.format(
+                {
+                    "Valor_Neto": lambda x: f"$ {x:,.2f}".replace(",", "X")
+                    .replace(".", ",")
+                    .replace("X", "."),
+                    "Fecha": lambda t: (
+                        t.strftime("%d/%m/%Y %H:%M") if pd.notnull(t) else ""
+                    ),
+                }
+            ),
+            use_container_width=True,
         )
 
     except Exception as e:
