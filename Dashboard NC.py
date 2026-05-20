@@ -15,7 +15,7 @@ st.markdown(
 # ==============================================================================
 # CONFIGURACIÓN DE LA RUTA LOCAL
 # ==============================================================================
-RUTA_ARCHIVO = RUTA_ARCHIVO = "https://sharepoint.com"
+RUTA_ARCHIVO = RUTA_ARCHIVO = "NOTAS CREDITO ACTUALIZABLE BD SIESA.xlsx"
 
 if os.path.exists(RUTA_ARCHIVO):
     try:
