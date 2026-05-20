@@ -255,7 +255,7 @@ if origen_datos is not None:
 
         # PARETO
         st.markdown("---")
-        st.markdown("### 🎯 Análisis de Clientes Críticos (Enfoque Financiero 80/20)")
+        st.markdown("### 🎯 Análisis de Clientes Críticos")
         df_pareto = df_filtrado.groupby('Cliente')['Valor_Neto'].sum().reset_index().sort_values(by='Valor_Neto', ascending=False)
         monto_total_global = df_pareto['Valor_Neto'].sum()
         
