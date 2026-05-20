@@ -319,6 +319,10 @@ if os.path.exists(RUTA_ARCHIVO):
                 template="plotly_white",
                 color_discrete_sequence=["#4CAF50"],
             )
+            # Forzar formato regional colombiano en el cuadro flotante (Hover)
+            fig_barra_valor.update_traces(
+                hovertemplate="<b>Motivo:</b> %{y}<br><b>Monto:</b> $ %{x:,.0f}<extra></extra>"
+            )
             fig_barra_valor.update_layout(xaxis_tickformat="$ ,.0f", separators=",.")
             st.plotly_chart(fig_barra_valor, use_container_width=True)
 
@@ -337,7 +341,11 @@ if os.path.exists(RUTA_ARCHIVO):
                     "Motivo_Anulacion": "Motivo",
                 },
                 template="plotly_white",
-                color_discrete_sequence=["#1E88E5"],  # Color azul para diferenciar
+                color_discrete_sequence=["#1E88E5"],
+            )
+            # Forzar formato regional de cantidad pura en el cuadro flotante (Hover)
+            fig_barra_cant.update_traces(
+                hovertemplate="<b>Motivo:</b> %{y}<br><b>Notas:</b> %{x:,.0f} NC<extra></extra>"
             )
             fig_barra_cant.update_layout(xaxis_tickformat=",.0f", separators=",.")
             st.plotly_chart(fig_barra_cant, use_container_width=True)
