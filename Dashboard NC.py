@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-from datetime import datetime
 
 # Configuración de la página del dashboard
 st.set_page_config(
@@ -16,7 +15,7 @@ st.markdown(
 # ==============================================================================
 # CONFIGURACIÓN DE LA RUTA LOCAL
 # ==============================================================================
-RUTA_ARCHIVO = "https://superpack-my.sharepoint.com/:x:/g/personal/jsepulveda_superpack_com_co/IQBJV_KfvJ2lQJOmiedy6V9VAZGJjLvY1F-r7yyW8s7Ja5k?download=1"
+RUTA_ARCHIVO = RUTA_ARCHIVO = "https://sharepoint.com"
 
 if os.path.exists(RUTA_ARCHIVO):
     try:
@@ -309,7 +308,3 @@ if os.path.exists(RUTA_ARCHIVO):
 
     except Exception as e:
         st.error(f"Error procesando los datos. Detalle: {e}")
-else:
-    st.error(
-        f"❌ No se encontró el archivo de Excel en la ruta especificada: {RUTA_ARCHIVO}"
-    )
