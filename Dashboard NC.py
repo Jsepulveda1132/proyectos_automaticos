@@ -227,57 +227,120 @@ if os.path.exists(RUTA_ARCHIVO):
 
     
         # ==============================================================================
-        # GRÁFICOS INTERACTIVOS (CON CORRECCIÓN DE UNIDADES FINANCIERAS)
+        # GRÁFICOS INTERACTIVOS (CUADRÍCULA DE 2X2)
         # ==============================================================================
-        g1, g2 = st.columns(2)
+        # FILA 1: TENDENCIAS TEMPORALES (CRONOLÓGICAS)
+        st.markdown("### 📈 Análisis de Tendencia Temporal")
+        fila1_col1, fila1_col2 = st.columns(2)
 
-        with g1:
-            st.subheader("📈 Tendencia Temporal de Créditos")
-            
-            # Agrupar por la fecha exacta formateada como día para ver el movimiento cronológico real
-            df_tiempo = df_filtrado.groupby(df_filtrado['Fecha'].dt.date)['Valor_Neto'].sum().reset_index()
-            df_tiempo = df_tiempo.sort_values(by='Fecha') # Forzar orden cronológico estricto
-            
-            fig_linea = px.line(
-                df_tiempo, x='Fecha', y='Valor_Neto', markers=True,
-                labels={'Fecha': 'Fecha de Emisión', 'Valor_Neto': 'Monto ($)'},
-                template="plotly_white", color_discrete_sequence=['#2E7D32']
+        # Agrupar datos cronológicos base
+        df_tiempo = (
+            df_filtrado.groupby(df_filtrado["Fecha"].dt.date)
+            .agg(
+                Monto_Total=("Valor_Neto", "sum"), Cantidad_Total=("Numero_NC", "count")
             )
-            
-            # Forzar formato con puntos para miles y comas para decimales en el cuadro flotante (Hover)
-            fig_linea.update_traces(
+            .reset_index()
+        )
+        df_tiempo = df_tiempo.sort_values(by="Fecha")
+
+        with fila1_col1:
+            st.subheader("Tendencia Temporal por Valor")
+            fig_linea_valor = px.line(
+                df_tiempo,
+                x="Fecha",
+                y="Monto_Total",
+                markers=True,
+                labels={"Fecha": "Fecha de Emisión", "Monto_Total": "Monto ($)"},
+                template="plotly_white",
+                color_discrete_sequence=["#2E7D32"],
+            )
+            fig_linea_valor.update_traces(
                 hovertemplate="<b>Fecha:</b> %{x|%d/%m/%Y}<br><b>Monto:</b> $ %{y:,.0f}<extra></extra>"
             )
-            
-            # Formatear el eje X para que muestre las fechas de forma estética y el eje Y con dinero regional
-            fig_linea.update_layout(
+            fig_linea_valor.update_layout(
                 xaxis_tickformat="%d/%m/%Y",
                 yaxis_tickformat="$ ,.0f",
                 separators=",.",
-                xaxis_title="Línea de Tiempo (Día a Día)"
+                xaxis_title="Línea de Tiempo (Día a Día)",
             )
-            st.plotly_chart(fig_linea, use_container_width=True)
+            st.plotly_chart(fig_linea_valor, use_container_width=True)
 
-
-
-        with g2:
-            st.subheader("📋 Distribución por Cantidad de Notas Crédito")
-            # Agrupar por motivo y contar cuántos números de NC existen por cada uno
-            df_motivos_graf = df_filtrado.groupby('Motivo_Anulacion')['Numero_NC'].count().reset_index()
-            df_motivos_graf = df_motivos_graf.rename(columns={'Numero_NC': 'Cantidad_NC'})
-            df_motivos_graf = df_motivos_graf.sort_values(by='Cantidad_NC', ascending=True)
-            
-            fig_barra = px.bar(
-                df_motivos_graf, x='Cantidad_NC', y='Motivo_Anulacion', orientation='h',
-                labels={'Cantidad_NC': 'Cantidad de NC', 'Motivo_Anulacion': 'Motivo'},
-                template="plotly_white", color_discrete_sequence=['#4CAF50']
+        with fila1_col2:
+            st.subheader("Tendencia Temporal por Cantidad de NC")
+            fig_linea_cant = px.line(
+                df_tiempo,
+                x="Fecha",
+                y="Cantidad_Total",
+                markers=True,
+                labels={
+                    "Fecha": "Fecha de Emisión",
+                    "Cantidad_Total": "Cantidad de NC",
+                },
+                template="plotly_white",
+                color_discrete_sequence=["#1565C0"],  # Color azul para diferenciar
             )
-            # Como son enteros de cantidades, le quitamos el signo de pesos ($) al formato del eje X
-            fig_barra.update_layout(
-                xaxis_tickformat=",.0f",
-                separators=",."
+            fig_linea_cant.update_traces(
+                hovertemplate="<b>Fecha:</b> %{x|%d/%m/%Y}<br><b>Notas:</b> %{y:,.0f} NC<extra></extra>"
             )
-            st.plotly_chart(fig_barra, use_container_width=True)
+            fig_linea_cant.update_layout(
+                xaxis_tickformat="%d/%m/%Y",
+                yaxis_tickformat=",.0f",
+                separators=",.",
+                xaxis_title="Línea de Tiempo (Día a Día)",
+            )
+            st.plotly_chart(fig_linea_cant, use_container_width=True)
+
+        st.markdown("---")
+
+        # FILA 2: DISTRIBUCIÓN POR MOTIVOS DE ANULACIÓN
+        st.markdown("### 📋 Análisis por Motivos de Anulación")
+        fila2_col1, fila2_col2 = st.columns(2)
+
+        # Agrupar datos de motivos base
+        df_motivos_graf = (
+            df_filtrado.groupby("Motivo_Anulacion")
+            .agg(
+                Monto_Total=("Valor_Neto", "sum"), Cantidad_Total=("Numero_NC", "count")
+            )
+            .reset_index()
+        )
+
+        with fila2_col1:
+            st.subheader("Distribución por Valor Total")
+            df_motivos_valor = df_motivos_graf.sort_values(
+                by="Monto_Total", ascending=True
+            )
+            fig_barra_valor = px.bar(
+                df_motivos_valor,
+                x="Monto_Total",
+                y="Motivo_Anulacion",
+                orientation="h",
+                labels={"Monto_Total": "Total ($)", "Motivo_Anulacion": "Motivo"},
+                template="plotly_white",
+                color_discrete_sequence=["#4CAF50"],
+            )
+            fig_barra_valor.update_layout(xaxis_tickformat="$ ,.0f", separators=",.")
+            st.plotly_chart(fig_barra_valor, use_container_width=True)
+
+        with fila2_col2:
+            st.subheader("Distribución por Cantidad de NC")
+            df_motivos_cant = df_motivos_graf.sort_values(
+                by="Cantidad_Total", ascending=True
+            )
+            fig_barra_cant = px.bar(
+                df_motivos_cant,
+                x="Cantidad_Total",
+                y="Motivo_Anulacion",
+                orientation="h",
+                labels={
+                    "Cantidad_Total": "Cantidad de NC",
+                    "Motivo_Anulacion": "Motivo",
+                },
+                template="plotly_white",
+                color_discrete_sequence=["#1E88E5"],  # Color azul para diferenciar
+            )
+            fig_barra_cant.update_layout(xaxis_tickformat=",.0f", separators=",.")
+            st.plotly_chart(fig_barra_cant, use_container_width=True)
 
         # Tabla Formateada con Puntos en Miles y Comas en Decimales
         st.subheader("🔍 Explorador de Datos Integrado")
