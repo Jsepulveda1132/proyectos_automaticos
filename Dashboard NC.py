@@ -350,31 +350,20 @@ if os.path.exists(RUTA_ARCHIVO):
             fig_barra_cant.update_layout(xaxis_tickformat=",.0f", separators=",.")
             st.plotly_chart(fig_barra_cant, use_container_width=True)
 
-        # Tabla Formateada con Puntos en Miles y Comas en Decimales
+        # Tabla Formateada con Puntos en Miles y Comas en Decimales (Sin Origen_Data)
         st.subheader("🔍 Explorador de Datos Integrado")
-        columnas_tabla = [
-            "Numero_NC",
-            "Fecha",
-            "NIT_Cliente",
-            "Cliente",
-            "Motivo_Anulacion",
-            "Valor_Neto",
-            "Origen_Data",
-        ]
-        df_vista = df_filtrado[columnas_tabla].sort_values(by="Fecha", ascending=False)
-
+        
+        # Removimos 'Origen_Data' de esta lista para ocultarla del usuario
+        columnas_tabla = ['Numero_NC', 'Fecha', 'NIT_Cliente', 'Cliente', 'Motivo_Anulacion', 'Valor_Neto']
+        
+        df_vista = df_filtrado[columnas_tabla].sort_values(by='Fecha', ascending=False)
+        
         st.dataframe(
-            df_vista.style.format(
-                {
-                    "Valor_Neto": lambda x: f"$ {x:,.2f}".replace(",", "X")
-                    .replace(".", ",")
-                    .replace("X", "."),
-                    "Fecha": lambda t: (
-                        t.strftime("%d/%m/%Y %H:%M") if pd.notnull(t) else ""
-                    ),
-                }
-            ),
-            use_container_width=True,
+            df_vista.style.format({
+                'Valor_Neto': lambda x: f"$ {x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+                'Fecha': lambda t: t.strftime('%d/%m/%Y %H:%M') if pd.notnull(t) else ""
+            }), 
+            use_container_width=True
         )
 
     except Exception as e:
