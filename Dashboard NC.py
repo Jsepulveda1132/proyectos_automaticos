@@ -351,7 +351,7 @@ if os.path.exists(RUTA_ARCHIVO):
             st.plotly_chart(fig_barra_cant, use_container_width=True)
 
             st.markdown("---")
-            st.markdown("### 🎯 Análisis de Clientes Críticos (Enfoque Financiero 80/20)")
+            st.markdown("### 🎯 Análisis de Clientes Críticos)")
 
         # 1. Calcular la concentración del dinero por cliente
         df_pareto = df_filtrado.groupby('Cliente')['Valor_Neto'].sum().reset_index()
