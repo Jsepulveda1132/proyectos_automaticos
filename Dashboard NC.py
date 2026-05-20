@@ -27,7 +27,7 @@ def descargar_excel_onedrive():
         user_upn = st.secrets["microsoft"]["user_principal_name"]
         
         # Conectarse a Azure AD para pedir un Token de acceso temporal
-        authority = f"https://microsoftonline.com/{tenant_id}"
+        authority = f"https://login.microsoftonline.com/{tenant_id}"
         # Sintaxis oficial corregida para la librería msal actual
         app = msal.ConfidentialClientApplication(
             client_id, 
