@@ -16,7 +16,7 @@ st.markdown(
 # ==============================================================================
 # CONFIGURACIÓN DE LA RUTA LOCAL
 # ==============================================================================
-RUTA_ARCHIVO = https://superpack-my.sharepoint.com/:x:/g/personal/jsepulveda_superpack_com_co/IQBJV_KfvJ2lQJOmiedy6V9VAZGJjLvY1F-r7yyW8s7Ja5k?e=6NtAUX
+RUTA_ARCHIVO = "https://superpack-my.sharepoint.com/:x:/g/personal/jsepulveda_superpack_com_co/IQBJV_KfvJ2lQJOmiedy6V9VAZGJjLvY1F-r7yyW8s7Ja5k?e=6NtAUX"
 
 if os.path.exists(RUTA_ARCHIVO):
     try:
