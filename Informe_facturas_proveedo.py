@@ -430,31 +430,65 @@ if origen_datos is not None:
             )
             st.plotly_chart(fig_bar_cant, use_container_width=True)
 
+        # ==============================================================================
+        # SECCIÓN 3: CONCENTRACIÓN POR ÁREAS Y ANÁLISIS DE PROVEEDORES (VALOR VS CANTIDAD)
+        # ==============================================================================
         st.markdown("---")
-        st.markdown("### 🏬 Análisis de Principales Proveedores")
+        st.markdown("### 🏬 Análisis de Principales Proveedores (Top 10)")
+        p_g1, p_g2 = st.columns(2)
 
-        # Gráfica del Top 10 centrada para mantener el equilibrio visual
-        df_prov_top = (
-            df_final.groupby("NOMBRE EMISOR")["TOTAL"]
-            .sum()
+        # Agrupar datos macro por proveedor (Emisor) una sola vez para optimizar rendimiento
+        df_prov_consolidado = (
+            df_final.groupby("NOMBRE EMISOR")
+            .agg(Monto_Total=("TOTAL", "sum"), Cantidad_Total=("FOLIO", "count"))
             .reset_index()
-            .sort_values(by="TOTAL", ascending=False)
-            .head(10)
         )
-        fig_prov_top = px.bar(
-            df_prov_top,
-            x="TOTAL",
-            y="NOMBRE EMISOR",
-            orientation="h",
-            template="plotly_white",
-            color_discrete_sequence=["#2E7D32"],
-            labels={"TOTAL": "Total Facturado ($)", "NOMBRE EMISOR": "Proveedor"},
-        )
-        fig_prov_top.update_layout(xaxis_tickformat="$ ,.0f", separators=",.")
-        fig_prov_top.update_traces(
-            hovertemplate="<b>Proveedor:</b> %{y}<br><b>Total Facturado:</b> $ %{x:,.0f}<extra></extra>"
-        )
-        st.plotly_chart(fig_prov_top, use_container_width=True)
+
+        with p_g1:
+            st.subheader("Top 10 Proveedores con Mayor Volumen de Facturación ($)")
+            df_prov_top_val = df_prov_consolidado.sort_values(
+                by="Monto_Total", ascending=False
+            ).head(10)
+            fig_prov_top_val = px.bar(
+                df_prov_top_val,
+                x="Monto_Total",
+                y="NOMBRE EMISOR",
+                orientation="h",
+                template="plotly_white",
+                color_discrete_sequence=["#2E7D32"],
+                labels={
+                    "Monto_Total": "Total Facturado ($)",
+                    "NOMBRE EMISOR": "Proveedor",
+                },
+            )
+            fig_prov_top_val.update_layout(xaxis_tickformat="$ ,.0f", separators=",.")
+            fig_prov_top_val.update_traces(
+                hovertemplate="<b>Proveedor:</b> %{y}<br><b>Total Facturado:</b> $ %{x:,.0f}<extra></extra>"
+            )
+            st.plotly_chart(fig_prov_top_val, use_container_width=True)
+
+        with p_g2:
+            st.subheader("Top 10 Proveedores con Mayor Cantidad de Facturas Emitidas")
+            df_prov_top_cant = df_prov_consolidado.sort_values(
+                by="Cantidad_Total", ascending=False
+            ).head(10)
+            fig_prov_top_cant = px.bar(
+                df_prov_top_cant,
+                x="Cantidad_Total",
+                y="NOMBRE EMISOR",
+                orientation="h",
+                template="plotly_white",
+                color_discrete_sequence=["#1E88E5"],
+                labels={
+                    "Cantidad_Total": "Cantidad de Facturas",
+                    "NOMBRE EMISOR": "Proveedor",
+                },
+            )
+            fig_prov_top_cant.update_layout(xaxis_tickformat=",.0f", separators=",.")
+            fig_prov_top_cant.update_traces(
+                hovertemplate="<b>Proveedor:</b> %{y}<br><b>Facturas Recibidas:</b> %{x:,} Fac<extra></extra>"
+            )
+            st.plotly_chart(fig_prov_top_cant, use_container_width=True)
 
         # ==============================================================================
         # TABLA GENERAL DE AUDITORÍA DIAN
