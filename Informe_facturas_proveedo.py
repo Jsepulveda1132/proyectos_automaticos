@@ -286,7 +286,7 @@ if origen_datos is not None:
         st.markdown("---")
 
         # ==============================================================================
-        # SECCIÓN 2: ESTACIONALIDAD DIARIA Y TENDENCIA MENSUAL
+        # SECCIÓN 2: ESTACIONALIDAD DIARIA Y TENDENCIA DINÁMICA (MES / DÍA)
         # ==============================================================================
         st.markdown("### 📅 Estacionalidad Cronológica del Gasto")
         t_col1, t_col2 = st.columns(2)
@@ -317,83 +317,144 @@ if origen_datos is not None:
             st.plotly_chart(fig_dia, use_container_width=True)
 
         with t_col2:
-            st.subheader("Evolución de la Facturación Mensual 2026")
-            df_mes = (
-                df_final.groupby("MES_EMISION")["TOTAL"]
-                .sum()
-                .reset_index()
-                .sort_values(by="MES_EMISION")
-            )
-            fig_mes = px.line(
-                df_mes,
-                x="MES_EMISION",
-                y="TOTAL",
-                markers=True,
-                template="plotly_white",
-                color_discrete_sequence=["#4CAF50"],
-                labels={"MES_EMISION": "Mes", "TOTAL": "Monto Facturado ($)"},
-            )
-            fig_mes.update_layout(
-                yaxis_tickformat="$ ,.0f", separators=",.", xaxis_title="Mes de Emisión"
-            )
-            fig_mes.update_traces(
-                hovertemplate="<b>Mes:</b> %{x}<br><b>Total Gasto:</b> $ %{y:,.0f}<extra></extra>"
-            )
+            # 🧠 LÓGICA DE ZOOM DINÁMICO: Si se filtra un solo mes, rompe la gráfica por días reales
+            if len(meses_seleccionados) == 1:
+                st.subheader(f"Evolución Diaria Detallada - {meses_seleccionados[0]}")
+                # Agrupar por la fecha exacta para ver la curva día a día en ese mes
+                df_mes_dinamico = (
+                    df_final.groupby("FECHA EMISIÓN")["TOTAL"]
+                    .sum()
+                    .reset_index()
+                    .sort_values(by="FECHA EMISIÓN")
+                )
+                fig_mes = px.line(
+                    df_mes_dinamico,
+                    x="FECHA EMISIÓN",
+                    y="TOTAL",
+                    markers=True,
+                    template="plotly_white",
+                    color_discrete_sequence=["#4CAF50"],
+                    labels={"FECHA EMISIÓN": "Fecha", "TOTAL": "Monto ($)"},
+                )
+                fig_mes.update_layout(
+                    xaxis_tickformat="%d/%m/%Y",
+                    yaxis_tickformat="$ ,.0f",
+                    separators=",.",
+                    xaxis_title="Línea de Tiempo Diaria",
+                )
+                fig_mes.update_traces(
+                    hovertemplate="<b>Fecha:</b> %{x|%d/%m/%Y}<br><b>Total Gasto:</b> $ %{y:,.0f}<extra></extra>"
+                )
+            else:
+                st.subheader("Evolución de la Facturación Mensual 2026")
+                # Si no hay filtro o hay varios meses, muestra la tendencia macro tradicional
+                df_mes_macro = (
+                    df_final.groupby("MES_EMISION")["TOTAL"]
+                    .sum()
+                    .reset_index()
+                    .sort_values(by="MES_EMISION")
+                )
+                fig_mes = px.line(
+                    df_mes_macro,
+                    x="MES_EMISION",
+                    y="TOTAL",
+                    markers=True,
+                    template="plotly_white",
+                    color_discrete_sequence=["#4CAF50"],
+                    labels={"MES_EMISION": "Mes", "TOTAL": "Monto Facturado ($)"},
+                )
+                fig_mes.update_layout(
+                    yaxis_tickformat="$ ,.0f",
+                    separators=",.",
+                    xaxis_title="Mes de Emisión",
+                )
+                fig_mes.update_traces(
+                    hovertemplate="<b>Mes:</b> %{x}<br><b>Total Gasto:</b> $ %{y:,.0f}<extra></extra>"
+                )
+
             st.plotly_chart(fig_mes, use_container_width=True)
 
         st.markdown("---")
 
         # ==============================================================================
-        # SECCIÓN 3: CONCENTRACIÓN Y TOP 10 PROVEEDORES
+        # SECCIÓN 3: CONCENTRACIÓN POR ÁREAS (VALOR VS CANTIDAD) Y PROVEEDORES
         # ==============================================================================
-        st.markdown("### 🏢 Concentración Estructural de las Compras")
+        st.markdown("### 🏢 Concentración Estructural de las Compras por Área")
         g1, g2 = st.columns(2)
 
+        # Agrupar datos macro por área responsable una sola vez
+        df_resumen_area = (
+            df_final.groupby("RESPONSABLE")
+            .agg(Monto_Total=("TOTAL", "sum"), Cantidad_Total=("FOLIO", "count"))
+            .reset_index()
+        )
+
         with g1:
-            st.subheader("Distribución del Gasto Total por Área Responsable")
-            df_resumen_area = (
-                df_final.groupby("RESPONSABLE")["TOTAL"]
-                .sum()
-                .reset_index()
-                .sort_values(by="TOTAL", ascending=False)
+            st.subheader("Distribución del Gasto Total por Área ($)")
+            df_resumen_area_val = df_resumen_area.sort_values(
+                by="Monto_Total", ascending=False
             )
-            fig_bar = px.bar(
-                df_resumen_area,
+            fig_bar_val = px.bar(
+                df_resumen_area_val,
                 x="RESPONSABLE",
-                y="TOTAL",
+                y="Monto_Total",
                 template="plotly_white",
                 color_discrete_sequence=["#4CAF50"],
-                labels={"RESPONSABLE": "Área", "TOTAL": "Monto ($)"},
+                labels={"RESPONSABLE": "Área", "Monto_Total": "Monto ($)"},
             )
-            fig_bar.update_layout(yaxis_tickformat="$ ,.0f", separators=",.")
-            fig_bar.update_traces(
+            fig_bar_val.update_layout(yaxis_tickformat="$ ,.0f", separators=",.")
+            fig_bar_val.update_traces(
                 hovertemplate="<b>Área:</b> %{x}<br><b>Total Compras:</b> $ %{y:,.0f}<extra></extra>"
             )
-            st.plotly_chart(fig_bar, use_container_width=True)
+            st.plotly_chart(fig_bar_val, use_container_width=True)
 
         with g2:
-            st.subheader("Top 10 Proveedores con Mayor Volumen de Facturación")
-            df_prov_top = (
-                df_final.groupby("NOMBRE EMISOR")["TOTAL"]
-                .sum()
-                .reset_index()
-                .sort_values(by="TOTAL", ascending=False)
-                .head(10)
+            st.subheader("Carga Operativa: Cantidad de Facturas por Área (Unidades)")
+            df_resumen_area_cant = df_resumen_area.sort_values(
+                by="Cantidad_Total", ascending=False
             )
-            fig_prov_top = px.bar(
-                df_prov_top,
-                x="TOTAL",
-                y="NOMBRE EMISOR",
-                orientation="h",
+            fig_bar_cant = px.bar(
+                df_resumen_area_cant,
+                x="RESPONSABLE",
+                y="Cantidad_Total",
                 template="plotly_white",
-                color_discrete_sequence=["#2E7D32"],
-                labels={"TOTAL": "Total Facturado ($)", "NOMBRE EMISOR": "Proveedor"},
+                color_discrete_sequence=["#1E88E5"],
+                labels={
+                    "RESPONSABLE": "Área",
+                    "Cantidad_Total": "Cantidad de Facturas",
+                },
             )
-            fig_prov_top.update_layout(xaxis_tickformat="$ ,.0f", separators=",.")
-            fig_prov_top.update_traces(
-                hovertemplate="<b>Proveedor:</b> %{y}<br><b>Total Facturado:</b> $ %{x:,.0f}<extra></extra>"
+            fig_bar_cant.update_layout(yaxis_tickformat=",.0f", separators=",.")
+            fig_bar_cant.update_traces(
+                hovertemplate="<b>Área:</b> %{x}<br><b>Facturas Recibidas:</b> %{y:,} NC<extra></extra>"
             )
-            st.plotly_chart(fig_prov_top, use_container_width=True)
+            st.plotly_chart(fig_bar_cant, use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("### 🏬 Análisis de Principales Proveedores")
+
+        # Gráfica del Top 10 centrada para mantener el equilibrio visual
+        df_prov_top = (
+            df_final.groupby("NOMBRE EMISOR")["TOTAL"]
+            .sum()
+            .reset_index()
+            .sort_values(by="TOTAL", ascending=False)
+            .head(10)
+        )
+        fig_prov_top = px.bar(
+            df_prov_top,
+            x="TOTAL",
+            y="NOMBRE EMISOR",
+            orientation="h",
+            template="plotly_white",
+            color_discrete_sequence=["#2E7D32"],
+            labels={"TOTAL": "Total Facturado ($)", "NOMBRE EMISOR": "Proveedor"},
+        )
+        fig_prov_top.update_layout(xaxis_tickformat="$ ,.0f", separators=",.")
+        fig_prov_top.update_traces(
+            hovertemplate="<b>Proveedor:</b> %{y}<br><b>Total Facturado:</b> $ %{x:,.0f}<extra></extra>"
+        )
+        st.plotly_chart(fig_prov_top, use_container_width=True)
 
         # ==============================================================================
         # TABLA GENERAL DE AUDITORÍA DIAN
