@@ -426,7 +426,7 @@ if origen_datos is not None:
             )
             fig_bar_cant.update_layout(yaxis_tickformat=",.0f", separators=",.")
             fig_bar_cant.update_traces(
-                hovertemplate="<b>Área:</b> %{x}<br><b>Facturas Recibidas:</b> %{y:,} NC<extra></extra>"
+                hovertemplate="<b>Área:</b> %{x}<br><b>Facturas Recibidas:</b> %{y:,} Fac<extra></extra>"
             )
             st.plotly_chart(fig_bar_cant, use_container_width=True)
 
