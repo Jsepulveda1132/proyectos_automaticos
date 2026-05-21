@@ -286,41 +286,49 @@ if origen_datos is not None:
         st.markdown("---")
 
         # ==============================================================================
-        # SECCIÓN 2: ESTACIONALIDAD DIARIA Y TENDENCIA DINÁMICA (MES / DÍA)
+        # SECCIÓN 2: ESTACIONALIDAD OPERATIVA Y TENDENCIA DINÁMICA
         # ==============================================================================
+        st.markdown("---")
         st.markdown("### 📅 Estacionalidad Cronológica del Gasto")
         t_col1, t_col2 = st.columns(2)
 
         with t_col1:
-            st.subheader("Días del Mes con Mayor Emisión (Estacionalidad 1 al 31)")
+            st.subheader(
+                "Días del Mes con Mayor Emisión (Carga por Cantidad de Facturas)"
+            )
+            # Cambiamos la métrica a conteo ('count') de folios por cada número de día
             df_dia_mes = (
-                df_final.groupby("DIA_DEL_MES")["TOTAL"]
-                .sum()
+                df_final.groupby("DIA_DEL_MES")["FOLIO"]
+                .count()
                 .reset_index()
                 .sort_values(by="DIA_DEL_MES")
             )
+            df_dia_mes = df_dia_mes.rename(columns={"FOLIO": "Cantidad_Facturas"})
+
+            # Cambiamos el color a azul corporativo (#1E88E5) para mantener la identidad de cantidad
             fig_dia = px.bar(
                 df_dia_mes,
                 x="DIA_DEL_MES",
-                y="TOTAL",
+                y="Cantidad_Facturas",
                 template="plotly_white",
                 color_discrete_sequence=["#1E88E5"],
                 labels={
-                    "DIA_DEL_MES": "Día del Calendario",
-                    "TOTAL": "Monto Facturado ($)",
+                    "DIA_DEL_MES": "Día del Calendario (1 al 31)",
+                    "Cantidad_Facturas": "Facturas Emitidas",
                 },
             )
-            fig_dia.update_layout(yaxis_tickformat="$ ,.0f", separators=",.")
+            fig_dia.update_layout(yaxis_tickformat=",.0f", separators=",.")
             fig_dia.update_traces(
-                hovertemplate="<b>Día:</b> %{x}<br><b>Monto Emitido:</b> $ %{y:,.0f}<extra></extra>"
+                hovertemplate="<b>Día del Mes:</b> %{x}<br><b>Volumen Recibido:</b> %{y:,} Facturas<extra></extra>"
             )
             st.plotly_chart(fig_dia, use_container_width=True)
 
         with t_col2:
-            # 🧠 LÓGICA DE ZOOM DINÁMICO: Si se filtra un solo mes, rompe la gráfica por días reales
+            # LÓGICA DE ZOOM DINÁMICO: Mantiene el dinero por valor neto para contrastar
             if len(meses_seleccionados) == 1:
-                st.subheader(f"Evolución Diaria Detallada - {meses_seleccionados[0]}")
-                # Agrupar por la fecha exacta para ver la curva día a día en ese mes
+                st.subheader(
+                    f"Evolución Diaria Detallada por Valor - {meses_seleccionados}"
+                )
                 df_mes_dinamico = (
                     df_final.groupby("FECHA EMISIÓN")["TOTAL"]
                     .sum()
@@ -346,8 +354,7 @@ if origen_datos is not None:
                     hovertemplate="<b>Fecha:</b> %{x|%d/%m/%Y}<br><b>Total Gasto:</b> $ %{y:,.0f}<extra></extra>"
                 )
             else:
-                st.subheader("Evolución de la Facturación Mensual 2026")
-                # Si no hay filtro o hay varios meses, muestra la tendencia macro tradicional
+                st.subheader("Evolución de la Facturación Mensual por Valor 2026")
                 df_mes_macro = (
                     df_final.groupby("MES_EMISION")["TOTAL"]
                     .sum()
