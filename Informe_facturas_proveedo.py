@@ -8,8 +8,8 @@ from O365 import Account
 
 # Configuración de la página del dashboard
 st.set_page_config(page_title="Análisis Facturación DIAN", layout="wide", page_icon="🧾")
-st.title("🧾 Inteligencia Financiera y Análisis de Facturación DIAN - 2026")
-st.markdown("Análisis estratégico del comportamiento del gasto, estacionalidad y segmentación semanal de proveedores.")
+st.title("🧾 Análisis de Facturación DIAN - 2026")
+st.markdown("Estacionalidad y segmentación semanal de proveedores.")
 
 # ==============================================================================
 # CONFIGURACIÓN DE PARÁMETROS Y ÁREAS CORPORATIVAS CONTROLADAS
