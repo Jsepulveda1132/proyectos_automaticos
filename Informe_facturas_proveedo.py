@@ -221,7 +221,7 @@ if origen_datos is not None:
         # ==============================================================================
         # DESPLIEGUE VISUAL (MÉTRICAS PRINCIPALES DINÁMICAS)
         # ==============================================================================
-        st.markdown("### 📊 Indicadores Macroeconómicos de Proveedores (Año 2026)")
+        st.markdown("### 📊 Métricas de facturación de Proveedores (Año 2026)")
         col1, col2, col3 = st.columns(3)
         col1.metric("💰 Facturación Consolidada DIAN", f"$ {total_monto_gasto:,.0f}")
         col2.metric(
