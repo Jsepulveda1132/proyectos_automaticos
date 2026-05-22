@@ -351,7 +351,7 @@ if origen_datos is not None:
                     xaxis_title="Línea de Tiempo Diaria",
                 )
                 fig_mes.update_traces(
-                    hovertemplate="<b>Fecha:</b> %{x|%d/%m/%Y}<br><b>Total Gasto:</b> $ %{y:,.0f}<extra></extra>"
+                    hovertemplate="<b>Fecha:</b> %{x|%d/%m/%Y}<br><b>Total Compras:</b> $ %{y:,.0f}<extra></extra>"
                 )
             else:
                 st.subheader("Evolución de la Facturación Mensual por Valor 2026")
