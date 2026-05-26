@@ -223,7 +223,7 @@ if origen_datos is not None:
         # ==============================================================================
         st.markdown("### 📊 Métricas de facturación de Proveedores (Año 2026)")
         col1, col2, col3 = st.columns(3)
-        col1.metric("💰 Facturación Consolidada DIAN", f"$ {total_monto_gasto:,.0f}")
+        col1.metric("💰 Facturación Consolidada DIAN", f"$ {total_monto_compras:,.0f}")
         col2.metric(
             "📄 Volumen de Documentos Emitidos",
             f"{total_facturas_procesadas:,} Facturas",
