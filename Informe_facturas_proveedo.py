@@ -502,7 +502,7 @@ if origen_datos is not None:
         # ==============================================================================
         st.markdown("---")
         st.subheader(
-            "🔍 Explorador de Documentos DIAN (Áreas Agendadas - Corte al 21 de Mayo)"
+            "🔍 Explorador de Documentos DIAN (Áreas Agendadas)"
         )
 
         columnas_vista = [
