@@ -21,7 +21,7 @@ HOJA_PROV = "CONTROL GENERAL"
 AREAS_SUPERPACK = [
     "BIENESTAR", "CALIDAD", "COMPRAS", "CONTABILIDAD", "FINANCIERA", 
     "GESTION HUMANA", "MANTENIMIENTO", "NOMINA", "OPERACIONES", 
-    "SSTA", "TI", "COMERCIAL", "GERENCIA", "TESORERIA"
+    "SSTA", "TI", "COMERCIAL", "GERENCIA", "TESORERIA", "ACERIAS"
 ]
 
 # ==============================================================================
